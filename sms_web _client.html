@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短信转发器 Web 客户端</title>
+    <style>
+        /* 设计令牌：现代 macOS / iOS 风格变量定义 */
+        :root {
+            --bg-body: #f3f4f6;
+            --bg-card: #ffffff;
+            --bg-subcard: #f8fafc;
+            --bg-input: #ffffff;
+            --bg-hover: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --accent-color: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-soft: rgba(37, 99, 235, 0.1);
+            --success-color: #10b981;
+            --success-soft: rgba(16, 185, 129, 0.12);
+            --danger-color: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.1);
+            --warning-color: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.12);
+            --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.06), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 深色主题变量 */
+        [data-theme="dark"] {
+            --bg-body: #0b0f19;
+            --bg-card: #131926;
+            --bg-subcard: #1a2234;
+            --bg-input: #0f1522;
+            --bg-hover: #1e273b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border-color: #263147;
+            --accent-color: #3b82f6;
+            --accent-hover: #60a5fa;
+            --accent-soft: rgba(59, 130, 246, 0.16);
+            --success-color: #34d399;
+            --success-soft: rgba(52, 211, 153, 0.14);
+            --danger-color: #f87171;
+            --danger-soft: rgba(248, 113, 113, 0.15);
+            --warning-color: #fbbf24;
+            --warning-soft: rgba(251, 191, 36, 0.15);
+            --shadow-card: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 24px 16px 48px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* 主容器 */
+        .app-wrapper {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            padding: 22px 24px;
+            transition: var(--transition);
+        }
+
+        /* 顶部标题栏 */
+        .header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            flex-shrink: 0;
+        }
+
+        .brand-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background-color: var(--bg-subcard);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--accent-color);
+        }
+
+        /* 可折叠的连接配置栏 */
+        .conn-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .conn-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-color);
+            box-shadow: 0 0 0 3px var(--success-soft);
+        }
+
+        .status-dot.empty {
+            background-color: var(--warning-color);
+            box-shadow: 0 0 0 3px var(--warning-soft);
+        }
+
+        .conn-summary {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .conn-chevron {
+            color: var(--text-muted);
+            transition: transform 0.25s ease;
+        }
+
+        .conn-card.collapsed .conn-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .conn-body {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .conn-card.collapsed .conn-body {
+            display: none;
+        }
+
+        .conn-footer {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* 表单元素 */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .label-hint {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 14px;
+            color: var(--text-primary);
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            outline: none;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 84px;
+            line-height: 1.5;
+        }
+
+        .input-action-btn {
+            position: absolute;
+            right: 8px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+        }
+
+        .input-action-btn:hover {
+            color: var(--text-primary);
+            background-color: var(--bg-hover);
+        }
+
+        /* 快捷功能标签栏 */
+        .quick-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .quick-tab {
+            padding: 6px 11px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-subcard);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .quick-tab:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .quick-tab.active {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+        }
+
+        /* 自定义单选分段控制器 (Segmented Control) */
+        .segmented-group {
+            display: flex;
+            background-color: var(--bg-subcard);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            gap: 4px;
+        }
+
+        .segmented-group input[type="radio"] {
+            display: none;
+        }
+
+        .segmented-group label {
+            flex: 1;
+            text-align: center;
+            justify-content: center;
+            padding: 7px 10px;
+            margin: 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .segmented-group input[type="radio"]:checked + label {
+            background-color: var(--bg-card);
+            color: var(--accent-color);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 主提交按钮 */
+        .btn-primary {
+            width: 100%;
+            margin-top: 8px;
+            padding: 12px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #ffffff;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+            transition: var(--transition);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 加载旋转动画 */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        /* 响应结果区域 */
+        .result-card {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .result-card.visible {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .result-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .result-tools {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-xs {
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-subcard);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: var(--transition);
+        }
+
+        .btn-xs:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        /* 错误提示条 */
+        .alert-error {
+            background-color: var(--danger-soft);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: var(--danger-color);
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            word-break: break-all;
+        }
+
+        /* 短信与通话卡片列表 */
+        .msg-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .msg-item {
+            background-color: var(--bg-subcard);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            transition: var(--transition);
+        }
+
+        .msg-item:hover {
+            border-color: var(--accent-color);
+        }
+
+        .msg-meta-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .msg-sender {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background-color: var(--accent-soft);
+            color: var(--accent-color);
+        }
+
+        .badge.sim2 {
+            background-color: var(--warning-soft);
+            color: var(--warning-color);
+        }
+
+        .badge.call-in {
+            background-color: var(--success-soft);
+            color: var(--success-color);
+        }
+
+        .badge.call-miss {
+            background-color: var(--danger-soft);
+            color: var(--danger-color);
+        }
+
+        .msg-content {
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.55;
+            margin-bottom: 10px;
+        }
+
+        .msg-meta-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .reply-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent-color);
+            background-color: var(--accent-soft);
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+        }
+
+        .reply-btn:hover {
+            background-color: var(--accent-color);
+            color: #ffffff;
+        }
+
+        /* 电量可视化卡片 */
+        .battery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .battery-stat {
+            background-color: var(--bg-subcard);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+        }
+
+        .battery-stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .battery-stat-val {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* JSON 代码块与语法高亮 */
+        pre.json-box {
+            background-color: var(--bg-subcard);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12.5px;
+            line-height: 1.55;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: var(--text-primary);
+            max-height: 420px;
+        }
+
+        .json-key { color: #2563eb; }
+        .json-string { color: #059669; }
+        .json-number { color: #d97706; }
+        .json-boolean { color: #7c3aed; }
+        .json-null { color: #94a3b8; }
+
+        [data-theme="dark"] .json-key { color: #60a5fa; }
+        [data-theme="dark"] .json-string { color: #34d399; }
+        [data-theme="dark"] .json-number { color: #fbbf24; }
+        [data-theme="dark"] .json-boolean { color: #c084fc; }
+
+        /* Toast 轻提示 */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 9px 16px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            z-index: 999;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 600px) {
+            body {
+                padding: 14px 12px 36px;
+            }
+            .card {
+                padding: 18px 16px;
+            }
+            .conn-body {
+                grid-template-columns: 1fr;
+            }
+            .conn-summary {
+                max-width: 140px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-wrapper">
+        <!-- 顶部品牌栏 -->
+        <header class="card header-bar">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        <path d="M8 10h.01"></path>
+                        <path d="M12 10h.01"></path>
+                        <path d="M16 10h.01"></path>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>短信转发器 Web 客户端</h1>
+                    <p>SmsForwarder 远程控制与调试终端</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button type="button" class="icon-btn" id="themeToggle" title="切换深色/浅色主题" aria-label="切换主题">
+                    <!-- 图标由 JS 动态渲染 -->
+                </button>
+            </div>
+        </header>
+
+        <!-- 主表单区域 -->
+        <form id="apiForm" novalidate>
+            <!-- 连接与鉴权配置卡片（支持自动记忆与折叠） -->
+            <section class="card conn-card" id="connCard" style="margin-bottom: 18px;">
+                <div class="conn-header" id="connHeader">
+                    <div class="conn-title">
+                        <span class="status-dot" id="connStatusDot"></span>
+                        <span>服务端连接配置</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="conn-summary" id="connSummary">http://192.168.1.2:5000</span>
+                        <svg class="conn-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="conn-body">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="url">服务地址</label>
+                        <input type="text" id="url" name="url" value="http://192.168.1.2:5000" placeholder="例如: http://192.168.1.2:5000" required>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="key">签名密钥</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="key" name="key" placeholder="输入安全签名密钥" style="padding-right: 36px;" required>
+                            <button type="button" class="input-action-btn" id="toggleKeyBtn" title="显示/隐藏密钥" aria-label="显示或隐藏密钥">
+                                <svg id="eyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="conn-footer">
+                        <span>配置自动保存于本地浏览器 (HMAC-SHA256 鉴权)</span>
+                        <button type="button" class="btn-xs" id="clearStorageBtn">清除记忆</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 指令操作卡片 -->
+            <section class="card">
+                <div class="form-group">
+                    <label for="endpoint">
+                        <span>快捷功能选择</span>
+                        <span class="label-hint" id="endpointPathBadge">/config/query</span>
+                    </label>
+
+                    <!-- 常用功能快捷胶囊标签 -->
+                    <div class="quick-tabs" id="quickTabs">
+                        <button type="button" class="quick-tab" data-ep="/sms/send">发短信</button>
+                        <button type="button" class="quick-tab" data-ep="/sms/query">查短信</button>
+                        <button type="button" class="quick-tab" data-ep="/call/query">查通话</button>
+                        <button type="button" class="quick-tab" data-ep="/battery/query">查电量</button>
+                        <button type="button" class="quick-tab" data-ep="/location/query">查定位</button>
+                        <button type="button" class="quick-tab" data-ep="/wol/send">远程WOL</button>
+                    </div>
+
+                    <!-- 完整分类下拉列表（保留全部 11 个原始接口） -->
+                    <select id="endpoint" name="endpoint" onchange="updateFormFields()" required>
+                        <optgroup label="短信与通话">
+                            <option value="/sms/send">远程发短信 (/sms/send)</option>
+                            <option value="/sms/query">远程查短信 (/sms/query)</option>
+                            <option value="/call/query">远程查通话 (/call/query)</option>
+                        </optgroup>
+                        <optgroup label="设备状态与控制">
+                            <option value="/battery/query">远程查电量 (/battery/query)</option>
+                            <option value="/location/query">远程查定位 (/location/query)</option>
+                            <option value="/wol/send">远程WOL唤醒 (/wol/send)</option>
+                        </optgroup>
+                        <optgroup label="通讯录管理">
+                            <option value="/contact/add">远程加话簿 (/contact/add)</option>
+                            <option value="/contact/query">远程查话簿 (/contact/query)</option>
+                        </optgroup>
+                        <optgroup label="系统与配置同步">
+                            <option value="/config/query" selected>远程查配置 (/config/query)</option>
+                            <option value="/clone/pull">客户端从服务端拉取配置 (/clone/pull)</option>
+                            <option value="/clone/push">客户端向服务端推送配置 (/clone/push)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 动态生成的参数表单区 -->
+                <div id="dynamicFields"></div>
+
+                <button type="button" class="btn-primary" id="sendButton" onclick="sendRequest()">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    <span>发送请求</span>
+                </button>
+            </section>
+        </form>
+
+        <!-- 响应结果展示卡片 -->
+        <section class="card result-card" id="resultCard">
+            <div class="result-header">
+                <div class="result-title">
+                    <span id="resultStatusIcon"></span>
+                    <span id="resultTitleText">响应结果</span>
+                </div>
+                <div class="result-tools">
+                    <button type="button" class="btn-xs" id="toggleRawJsonBtn" style="display: none;">查看原始 JSON</button>
+                    <button type="button" class="btn-xs" id="copyResultBtn">复制结果</button>
+                </div>
+            </div>
+
+            <!-- 友好视图容器 -->
+            <div id="friendlyResponse"></div>
+            <!-- 原始 JSON 视图容器 -->
+            <pre class="json-box" id="response" style="display: none;"></pre>
+        </section>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 全局状态缓存
+        let lastRawResponseText = '';
+        let isShowingRawJson = false;
+
+        // 本地存储键名
+        const STORAGE_KEYS = {
+            URL: 'smsf_web_url',
+            KEY: 'smsf_web_key',
+            THEME: 'smsf_web_theme',
+            COLLAPSED: 'smsf_web_conn_collapsed'
+        };
+
+        // 显示轻量提示信息
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        // HTML 转义，防止短信内容包含特殊字符破坏页面结构
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // JSON 语法高亮
+        function syntaxHighlightJson(jsonObj) {
+            const jsonStr = typeof jsonObj === 'string' ? jsonObj : JSON.stringify(jsonObj, null, 2);
+            const escaped = escapeHtml(jsonStr);
+            return escaped.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    cls = /:$/.test(match) ? 'json-key' : 'json-string';
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // 主题初始化与切换
+        function initTheme() {
+            const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            applyTheme(theme);
+
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                applyTheme(next);
+                localStorage.setItem(STORAGE_KEYS.THEME, next);
+            });
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const btn = document.getElementById('themeToggle');
+            if (theme === 'dark') {
+                btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+            } else {
+                btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+            }
+        }
+
+        // 初始化连接配置记忆与折叠面板
+        function initConnectionConfig() {
+            const urlInput = document.getElementById('url');
+            const keyInput = document.getElementById('key');
+            const connCard = document.getElementById('connCard');
+            const connHeader = document.getElementById('connHeader');
+            const connSummary = document.getElementById('connSummary');
+            const connStatusDot = document.getElementById('connStatusDot');
+
+            const savedUrl = localStorage.getItem(STORAGE_KEYS.URL);
+            const savedKey = localStorage.getItem(STORAGE_KEYS.KEY);
+            if (savedUrl) urlInput.value = savedUrl;
+            if (savedKey) keyInput.value = savedKey;
+
+            function syncConnStatus() {
+                const u = urlInput.value.trim();
+                const k = keyInput.value.trim();
+                connSummary.textContent = u || '未设置地址';
+                if (u && k) {
+                    connStatusDot.classList.remove('empty');
+                } else {
+                    connStatusDot.classList.add('empty');
+                }
+                localStorage.setItem(STORAGE_KEYS.URL, urlInput.value);
+                localStorage.setItem(STORAGE_KEYS.KEY, keyInput.value);
+            }
+
+            urlInput.addEventListener('input', syncConnStatus);
+            keyInput.addEventListener('input', syncConnStatus);
+            syncConnStatus();
+
+            // 如果之前已保存过地址和密钥，默认允许记忆折叠状态
+            const wasCollapsed = localStorage.getItem(STORAGE_KEYS.COLLAPSED) === 'true';
+            if (wasCollapsed && savedUrl && savedKey) {
+                connCard.classList.add('collapsed');
+            }
+
+            connHeader.addEventListener('click', () => {
+                connCard.classList.toggle('collapsed');
+                localStorage.setItem(STORAGE_KEYS.COLLAPSED, connCard.classList.contains('collapsed'));
+            });
+
+            // 显示/隐藏密钥切换
+            document.getElementById('toggleKeyBtn').addEventListener('click', () => {
+                const isPwd = keyInput.type === 'password';
+                keyInput.type = isPwd ? 'text' : 'password';
+                document.getElementById('eyeIcon').innerHTML = isPwd
+                    ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`
+                    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+            });
+
+            // 清除本地记忆
+            document.getElementById('clearStorageBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                localStorage.removeItem(STORAGE_KEYS.URL);
+                localStorage.removeItem(STORAGE_KEYS.KEY);
+                urlInput.value = 'http://192.168.1.2:5000';
+                keyInput.value = '';
+                syncConnStatus();
+                showToast('已清除本地保存的连接配置');
+            });
+        }
+
+        // 快捷功能标签联动
+        function syncQuickTabs(endpoint) {
+            document.getElementById('endpointPathBadge').textContent = endpoint;
+            document.querySelectorAll('.quick-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.ep === endpoint);
+            });
+        }
+
+        // 根据选择的功能列表更新表单字段（保持与原字段 name 与默认值完全一致）
+        function updateFormFields() {
+            const dynamicFields = document.getElementById('dynamicFields');
+            const endpoint = document.getElementById('endpoint').value;
+            dynamicFields.innerHTML = '';
+
+            syncQuickTabs(endpoint);
+
+            const fields = getFieldsForEndpoint(endpoint);
+            fields.forEach(field => createField(dynamicFields, field));
+        }
+
+        // 获取每个功能的表单字段定义
+        function getFieldsForEndpoint(endpoint) {
+            const endpointFields = {
+                '/clone/pull': [
+                    { name: 'version_code', type: 'number', label: '客户端App版本号', placeholder: '例如: 300040', required: true, defaultValue: '' }
+                ],
+                '/clone/push': [
+                    { name: 'config_data', type: 'textarea', label: '配置数据 (JSON 格式)', placeholder: '在此粘贴完整的 JSON 配置对象...', required: true, defaultValue: '{}' }
+                ],
+                '/sms/send': [
+                    { name: 'sim_slot', type: 'radio', label: '发送卡槽', options: [{ value: '1', label: 'SIM卡 1' }, { value: '2', label: 'SIM卡 2' }], required: true, defaultValue: '1' },
+                    { name: 'phone_numbers', type: 'text', label: '接收手机号码', hint: '多个号码用半角分号 ; 分隔', placeholder: '例如: 10086;13800138000', required: true, defaultValue: '' },
+                    { name: 'msg_content', type: 'textarea', label: '短信内容', placeholder: '请输入要发送的短信正文...', required: true, defaultValue: '' }
+                ],
+                '/sms/query': [
+                    { name: 'type', type: 'radio', label: '短信类型', options: [{ value: '1', label: '接收短信' }, { value: '2', label: '发送短信' }], required: true, defaultValue: '1' },
+                    { name: 'page_num', type: 'number', label: '页码', placeholder: '1', required: true, defaultValue: '1' },
+                    { name: 'page_size', type: 'number', label: '分页大小', placeholder: '10', required: true, defaultValue: '10' },
+                    { name: 'keyword', type: 'text', label: '搜索关键字', hint: '选填，模糊匹配短信内容', placeholder: '输入验证码、银行名称等关键词...', required: false, defaultValue: '' }
+                ],
+                '/call/query': [
+                    { name: 'type', type: 'radio', label: '通话类型', options: [{ value: '1', label: '呼入' }, { value: '2', label: '呼出' }, { value: '3', label: '未接' }], required: false, defaultValue: '3' },
+                    { name: 'page_num', type: 'number', label: '页码', placeholder: '1', required: true, defaultValue: '1' },
+                    { name: 'page_size', type: 'number', label: '分页大小', placeholder: '10', required: true, defaultValue: '10' },
+                    { name: 'phone_number', type: 'text', label: '手机号码筛选', hint: '选填，支持模糊匹配', placeholder: '输入完整或部分号码...', required: false, defaultValue: '' }
+                ],
+                '/wol/send': [
+                    { name: 'mac', type: 'text', label: '目标网卡 MAC 地址', placeholder: '例如: 24:5E:BE:0C:45:9A', required: true }
+                ],
+                '/contact/add': [
+                    { name: 'phone_number', type: 'text', label: '手机号码', hint: '多个手机号用半角分号 ; 分隔', placeholder: '例如: 13800138000', required: true },
+                    { name: 'name', type: 'text', label: '通讯录显示名称', hint: '选填', placeholder: '例如: 张三', required: false }
+                ]
+            };
+            return endpointFields[endpoint] || [];
+        }
+
+        // 创建表单字段 DOM
+        function createField(container, field) {
+            const group = document.createElement('div');
+            group.className = 'form-group';
+
+            if (field.type === 'radio') {
+                if (field.label) {
+                    const groupLabel = document.createElement('label');
+                    groupLabel.innerText = field.label;
+                    group.appendChild(groupLabel);
+                }
+                const radioGroup = document.createElement('div');
+                radioGroup.className = 'segmented-group';
+                field.options.forEach(option => {
+                    const fieldInput = document.createElement('input');
+                    fieldInput.type = 'radio';
+                    fieldInput.id = field.name + '_' + option.value;
+                    fieldInput.name = field.name;
+                    fieldInput.value = option.value;
+                    fieldInput.checked = option.value === field.defaultValue;
+
+                    const radioLabel = document.createElement('label');
+                    radioLabel.htmlFor = fieldInput.id;
+                    radioLabel.innerText = option.label;
+                    radioGroup.appendChild(fieldInput);
+                    radioGroup.appendChild(radioLabel);
+                });
+                group.appendChild(radioGroup);
+            } else {
+                const fieldLabel = document.createElement('label');
+                fieldLabel.htmlFor = field.name;
+                const titleSpan = document.createElement('span');
+                titleSpan.innerText = field.label;
+                fieldLabel.appendChild(titleSpan);
+
+                if (field.hint) {
+                    const hintSpan = document.createElement('span');
+                    hintSpan.className = 'label-hint';
+                    hintSpan.innerText = field.hint;
+                    fieldLabel.appendChild(hintSpan);
+                }
+                group.appendChild(fieldLabel);
+
+                const fieldInput = field.type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
+                if (field.type !== 'textarea') {
+                    fieldInput.type = field.type;
+                }
+                fieldInput.id = field.name;
+                fieldInput.name = field.name;
+                fieldInput.required = field.required;
+                fieldInput.value = field.defaultValue || '';
+                if (field.placeholder) {
+                    fieldInput.placeholder = field.placeholder;
+                }
+                group.appendChild(fieldInput);
+            }
+
+            container.appendChild(group);
+        }
+
+        // 展示响应结果面板
+        function renderResultPanel({ isSuccess, title, friendlyHtml, rawJsonText, hasFriendlyView }) {
+            const resultCard = document.getElementById('resultCard');
+            const statusIcon = document.getElementById('resultStatusIcon');
+            const titleText = document.getElementById('resultTitleText');
+            const friendlyBox = document.getElementById('friendlyResponse');
+            const rawBox = document.getElementById('response');
+            const toggleBtn = document.getElementById('toggleRawJsonBtn');
+
+            lastRawResponseText = rawJsonText || '';
+            isShowingRawJson = !hasFriendlyView;
+
+            resultCard.classList.add('visible');
+            titleText.textContent = title;
+
+            if (isSuccess) {
+                statusIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            } else {
+                statusIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger-color)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+            }
+
+            if (hasFriendlyView) {
+                friendlyBox.innerHTML = friendlyHtml;
+                friendlyBox.style.display = 'block';
+                rawBox.innerHTML = syntaxHighlightJson(rawJsonText);
+                rawBox.style.display = 'none';
+                toggleBtn.style.display = 'inline-flex';
+                toggleBtn.textContent = '查看原始 JSON';
+            } else {
+                friendlyBox.style.display = 'none';
+                if (isSuccess) {
+                    rawBox.innerHTML = syntaxHighlightJson(rawJsonText);
+                    rawBox.style.display = 'block';
+                } else {
+                    friendlyBox.innerHTML = `<div class="alert-error">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <div>${escapeHtml(rawJsonText)}</div>
+                    </div>`;
+                    friendlyBox.style.display = 'block';
+                    rawBox.style.display = 'none';
+                }
+                toggleBtn.style.display = 'none';
+            }
+
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 发送请求（完全兼容原有接口数据结构与签名算法）
+        async function sendRequest() {
+            const form = document.getElementById('apiForm');
+            const sendButton = document.getElementById('sendButton');
+
+            // 如果连接配置被折叠且校验失败，自动展开以便用户看到必填提示
+            const urlVal = document.getElementById('url').value.trim();
+            const keyVal = document.getElementById('key').value.trim();
+            if (!urlVal || !keyVal) {
+                document.getElementById('connCard').classList.remove('collapsed');
+            }
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const url = document.getElementById('url').value.trim().replace(/\/+$/, '');
+            const key = document.getElementById('key').value;
+            const endpoint = document.getElementById('endpoint').value;
+            const timestamp = Date.now();
+
+            let data = {};
+            if (endpoint === '/clone/push') {
+                const configData = document.getElementById('config_data').value;
+                try {
+                    data = JSON.parse(configData);
+                } catch (error) {
+                    renderResultPanel({
+                        isSuccess: false,
+                        title: '参数格式错误',
+                        rawJsonText: 'Error: 配置数据不是有效的 JSON 格式 (' + error.message + ')',
+                        hasFriendlyView: false
+                    });
+                    return;
+                }
+            } else {
+                const dynamicFields = document.getElementById('dynamicFields').querySelectorAll('input, textarea');
+                dynamicFields.forEach(field => {
+                    if (field.type === 'radio' && !field.checked) return;
+                    data[field.name] = field.value;
+                });
+            }
+
+            sendButton.disabled = true;
+            sendButton.innerHTML = `<span class="spinner"></span><span>请求发送中...</span>`;
+
+            try {
+                const sign = await generateSign(timestamp, key);
+                const requestBody = { data, timestamp, sign };
+                const response = await fetch(url + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const responseData = await response.json();
+                const prettyJson = JSON.stringify(responseData.data !== undefined ? responseData.data : responseData, null, 2);
+
+                if (responseData.code === 200) {
+                    const formatted = formatResponseData(responseData.data, endpoint);
+                    renderResultPanel({
+                        isSuccess: true,
+                        title: `请求成功 (${endpoint})`,
+                        friendlyHtml: formatted.html,
+                        rawJsonText: prettyJson,
+                        hasFriendlyView: formatted.hasFriendly
+                    });
+                } else {
+                    renderResultPanel({
+                        isSuccess: false,
+                        title: `服务端返回异常 (Code: ${responseData.code || 'Error'})`,
+                        rawJsonText: responseData.msg || JSON.stringify(responseData),
+                        hasFriendlyView: false
+                    });
+                }
+            } catch (error) {
+                renderResultPanel({
+                    isSuccess: false,
+                    title: '网络或请求异常',
+                    rawJsonText: 'Error: ' + error.message + '（请检查服务地址是否可达、端口是否正确或跨域设置）',
+                    hasFriendlyView: false
+                });
+            } finally {
+                sendButton.disabled = false;
+                sendButton.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg><span>发送请求</span>`;
+            }
+        }
+
+        // 格式化响应数据为友好卡片视图
+        function formatResponseData(data, endpoint) {
+            // 1. 短信查询美化列表
+            if (endpoint === '/sms/query' && Array.isArray(data)) {
+                if (data.length === 0) {
+                    return { hasFriendly: true, html: `<div style="text-align:center;color:var(--text-muted);padding:20px 0;font-size:13px;">暂无符合条件的短信记录</div>` };
+                }
+                const listHtml = data.map(item => {
+                    const date = item.date ? new Date(item.date).toLocaleString() : '';
+                    const simText = item.sim_id !== undefined ? `SIM ${item.sim_id}` : '未知卡槽';
+                    const simClass = String(item.sim_id) === '2' ? 'badge sim2' : 'badge';
+                    const senderName = escapeHtml(item.name || '未知联系人');
+                    const phone = escapeHtml(item.number || '');
+                    const content = escapeHtml(item.content || '');
+                    const safeNumberAttr = String(item.number || '').replace(/'/g, "\\'");
+
+                    return `
+                        <div class="msg-item">
+                            <div class="msg-meta-top">
+                                <div class="msg-sender">
+                                    <span>${senderName}</span>
+                                    <span style="font-weight:400;color:var(--text-secondary);font-size:13px;">${phone}</span>
+                                </div>
+                                <span class="${simClass}">${escapeHtml(simText)}</span>
+                            </div>
+                            <div class="msg-content">${content}</div>
+                            <div class="msg-meta-bottom">
+                                <span>${escapeHtml(date)}</span>
+                                <button type="button" class="reply-btn" onclick="replySMS('${safeNumberAttr}')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                                    <span>回复</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                return { hasFriendly: true, html: `<div class="msg-list">${listHtml}</div>` };
+            }
+
+            // 2. 通话记录美化列表
+            if (endpoint === '/call/query' && Array.isArray(data)) {
+                if (data.length === 0) {
+                    return { hasFriendly: true, html: `<div style="text-align:center;color:var(--text-muted);padding:20px 0;font-size:13px;">暂无通话记录</div>` };
+                }
+                const listHtml = data.map(item => {
+                    const date = item.dateLong ? new Date(item.dateLong).toLocaleString() : '';
+                    const sec = Number(item.duration) || 0;
+                    const duration = `${Math.floor(sec / 60)}分${sec % 60}秒`;
+                    const typeMap = { 1: { text: '呼入', cls: 'badge call-in' }, 2: { text: '呼出', cls: 'badge' }, 3: { text: '未接', cls: 'badge call-miss' } };
+                    const typeInfo = typeMap[item.type] || { text: `SIM ${item.sim_id ?? ''}`, cls: 'badge' };
+
+                    return `
+                        <div class="msg-item">
+                            <div class="msg-meta-top">
+                                <div class="msg-sender">
+                                    <span>${escapeHtml(item.name || '未知号码')}</span>
+                                    <span style="font-weight:400;color:var(--text-secondary);font-size:13px;">${escapeHtml(item.number || '')}</span>
+                                </div>
+                                <span class="${typeInfo.cls}">${escapeHtml(typeInfo.text)}</span>
+                            </div>
+                            <div class="msg-meta-bottom" style="margin-top:4px;">
+                                <span>通话时长: <strong>${escapeHtml(duration)}</strong> · SIM ${escapeHtml(item.sim_id ?? '-')}</span>
+                                <span>${escapeHtml(date)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                return { hasFriendly: true, html: `<div class="msg-list">${listHtml}</div>` };
+            }
+
+            // 3. 电量信息智能卡片展示
+            if (endpoint === '/battery/query' && data && typeof data === 'object') {
+                const entries = Object.entries(data);
+                if (entries.length > 0) {
+                    const labelMap = {
+                        level: '当前电量',
+                        scale: '电量上限',
+                        voltage: '电池电压',
+                        temperature: '电池温度',
+                        status: '充电状态',
+                        health: '电池健康',
+                        plugged: '供电方式'
+                    };
+                    const cardsHtml = entries.map(([k, v]) => `
+                        <div class="battery-stat">
+                            <div class="battery-stat-label">${escapeHtml(labelMap[k] || k)}</div>
+                            <div class="battery-stat-val">${escapeHtml(v)}</div>
+                        </div>
+                    `).join('');
+                    return { hasFriendly: true, html: `<div class="battery-grid">${cardsHtml}</div>` };
+                }
+            }
+
+            // 4. 其他接口默认使用语法高亮 JSON 视图
+            return { hasFriendly: false, html: '' };
+        }
+
+        // 快捷回复短信（保留原有逻辑并平滑滚动至表单顶部）
+        function replySMS(number) {
+            const endpointSelect = document.getElementById('endpoint');
+            endpointSelect.value = '/sms/send';
+            updateFormFields();
+            const phoneInput = document.getElementById('phone_numbers');
+            if (phoneInput) {
+                phoneInput.value = number;
+            }
+            const contentInput = document.getElementById('msg_content');
+            if (contentInput) {
+                contentInput.focus();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast(`已填入收件人: ${number}`);
+        }
+
+        // 生成签名（严格保持原算法: timestamp + "\n" + key 的 HMAC-SHA256 Base64 URL编码）
+        async function generateSign(timestamp, key) {
+            const message = `${timestamp}\n${key}`;
+            const enc = new TextEncoder();
+            const keyData = enc.encode(key);
+            const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+            const signature = await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(message));
+            return encodeURIComponent(btoa(String.fromCharCode(...new Uint8Array(signature))));
+        }
+
+        // 初始化页面事件绑定
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initConnectionConfig();
+            updateFormFields();
+
+            // 绑定快捷功能胶囊点击事件
+            document.querySelectorAll('.quick-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.getElementById('endpoint').value = tab.dataset.ep;
+                    updateFormFields();
+                });
+            });
+
+            // 切换友好视图与原始 JSON 视图
+            document.getElementById('toggleRawJsonBtn').addEventListener('click', function () {
+                isShowingRawJson = !isShowingRawJson;
+                document.getElementById('friendlyResponse').style.display = isShowingRawJson ? 'none' : 'block';
+                document.getElementById('response').style.display = isShowingRawJson ? 'block' : 'none';
+                this.textContent = isShowingRawJson ? '返回卡片视图' : '查看原始 JSON';
+            });
+
+            // 一键复制响应结果
+            document.getElementById('copyResultBtn').addEventListener('click', () => {
+                if (!lastRawResponseText) return;
+                const textarea = document.createElement('textarea');
+                textarea.value = lastRawResponseText;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('已复制响应结果到剪贴板');
+                } catch (e) {
+                    showToast('复制失败，请手动选择复制');
+                }
+                document.body.removeChild(textarea);
+            });
+        });
+    </script>
+</body>
+
+</html>
