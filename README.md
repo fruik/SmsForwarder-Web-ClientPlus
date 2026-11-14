@@ -30,4 +30,4 @@
 ## 📄 鸣谢与开源协议
 
 * **原始项目**：[CTCD/SmsForwarder-Web-Client](https://github.com/CTCD/SmsForwarder-Web-Client)
-* **开源协议**：本项目延续原项目的开源精神，遵循 **GNU General Public License v3.0 (GPLv3)** 协议进行分发和开源。详细条款请参阅 [LICENSE](LICENSE) 文件。
+* **开源协议**：本项目延续原项目的开源精神，遵循 **GNU General Public License v3.0 (GPLv3)** 协议进行分发和开源。
